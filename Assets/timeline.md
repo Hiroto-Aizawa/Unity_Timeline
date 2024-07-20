@@ -1,0 +1,1 @@
+https://xrcloud.jp/blog/articles/business/11271/
