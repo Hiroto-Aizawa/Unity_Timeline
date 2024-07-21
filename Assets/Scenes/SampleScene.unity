@@ -341,7 +341,8 @@ PlayableDirector:
   m_InitialTime: 0
   m_SceneBindings: []
   m_ExposedReferences:
-    m_References: []
+    m_References:
+    - 33773e3bc043d2944b90cafcf72c42e4: {fileID: 0}
 --- !u!4 &1041319260
 Transform:
   m_ObjectHideFlags: 0
