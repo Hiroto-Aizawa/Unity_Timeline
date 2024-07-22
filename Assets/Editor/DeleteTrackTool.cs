@@ -6,7 +6,6 @@ using UnityEngine.Timeline;
 using UnityEditor.Timeline;
 using UnityEngine.Playables;
 using System.Linq;
-using System.Reflection.Emit;
 
 public class DeleteTrackTool : EditorWindow
 {
@@ -16,7 +15,8 @@ public class DeleteTrackTool : EditorWindow
 
     private List<bool> isDeleteFlagList = new List<bool>(0);
     private bool isDeleteFlameTrack = true;
-    private bool isFirstLoop = true;
+    private bool isNeedInit = true;
+    private string description;
 
     //Playable Directorがセットされた初期のトラック数
     private int initTrackCount;
@@ -33,15 +33,19 @@ public class DeleteTrackTool : EditorWindow
         window.Show();
     }
 
+    /// <summary>
+    /// 空 or ミュートされたトラックを検出して一覧表示する
+    /// 一覧表示されたチェックボックスで有効になっているトラックをまとめて削除する。
+    /// </summary>
     private void OnGUI()
     {
         scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
         GUILayout.Space(20);
-        //playable directorを取得する
+        //playable directorを含んだGameObjectを取得する
         timelineObj = EditorGUILayout.ObjectField("Playable Director", timelineObj, typeof(GameObject), true) as GameObject;
         GUILayout.Space(20);
 
-        if(timelineObj != null)
+        if (timelineObj != null)
         {
             PlayableDirector timelineDirector = timelineObj.GetComponent<PlayableDirector>();
 
@@ -50,14 +54,14 @@ public class DeleteTrackTool : EditorWindow
             //Timeline上にあるトラック数を取得する
             trackCount = timelineAsset.outputTrackCount;
 
-            if(isFirstLoop)
+            if (isNeedInit)
             {
                 //初期のトラック数を記録する（削除されたトラックがあるか確認に使う）
-                isFirstLoop = false;
+                isNeedInit = false;
                 initTrackCount = trackCount;
             }
 
-            if(trackCount > 0)
+            if (trackCount > 0)
             {
                 // timelineにあるトラックをすべて取得する(GroupTrackは含まない)
                 var tracks = timelineAsset.GetOutputTracks();
@@ -67,86 +71,44 @@ public class DeleteTrackTool : EditorWindow
 
 
                 //削除するトラックを格納する配列
-                //要素（トラック）の追加ができるように初期化する
                 List<TrackAsset> deleteTracks = new List<TrackAsset>(0);
 
                 GUILayout.Label($"トラック数: {trackCount}");
 
                 GUILayout.Space(20);
 
-                // 削除用のリストを動的に作成するためのindex
                 int i = 0;
 
-                foreach(TrackAsset track in tracks)
+                //空 or ミュートされているトラックを削除用リストに格納する。
+                //Makerトラックは空 or ミュートでもリストには含めない
+                tracks = tracks.Where(e => (e.isEmpty || e.muted) && e.name != "Markers").ToList();
+
+                foreach (TrackAsset track in tracks)
                 {
-
-                    // TimelineにあるMarkersトラックは削除対象にしない
-                    if(track.isEmpty && track.name != "Markers")
+                    if (isDeleteFlagList.Count < i + 1)
                     {
-                        Debug.Log($"Loop i: {i} \n isDeleteFlagList: {isDeleteFlagList.Count}");
-                        //動的に削除用のリストの要素を増やす
-                        if(isDeleteFlagList.Count < i + 1)
-                        {
-                            //Debug.Log($"i count: {i}");
-                            isDeleteFlagList.Add(false);
-                        }
-
-                        GUILayout.Label($"【グループ名】 \n ・{track.parent.name}");
-                        GUILayout.Label($"【トラック名】 \n ・{track.name}");
-                        GUILayout.Label("空トラックを検知");
-                        isDeleteFlagList[i] = GUILayout.Toggle(isDeleteFlagList[i], "削除リストに追加する");
-
-
-                        //削除用のリストに追加する
-                        if(isDeleteFlagList[i])
-                        {
-                            deleteTracks.Add(track);
-                        }
-                        else
-                        {
-                            deleteTracks.Remove(track);
-                        }
-
-                        GUILayout.Space(20);
-
-                        //ループ毎にindexを増加させる
-                        i++;
+                        isDeleteFlagList.Add(false);
                     }
-                    else if(track.muted && track.name != "Markers")
-                    {
-                        //動的に削除用のリストの要素を増やす
-                        if(isDeleteFlagList.Count < i + 1)
-                        {
-                            isDeleteFlagList.Add(false);
-                        }
 
-                        GUILayout.Label($"【グループ名】 \n ・{track.parent.name}");
-                        GUILayout.Label($"【トラック名】 \n ・{track.name}");
-                        GUILayout.Label("ミュートされたトラックを検知");
-                        isDeleteFlagList[i] = GUILayout.Toggle(isDeleteFlagList[i], "削除リストに追加する");
+                    GUILayout.Label($"【グループ名】 \n ・{track.parent.name}");
+                    GUILayout.Label($"【トラック名】 \n ・{track.name}");
+                    description = track.isEmpty ? description = "空トラックを検知" : description = "ミュートされたトラックを検知";
+                    GUILayout.Label(description);
+                    isDeleteFlagList[i] = GUILayout.Toggle(isDeleteFlagList[i], "削除リストに追加する");
 
-                        //削除用のリストに追加する
-                        if(isDeleteFlagList[i])
-                        {
-                            deleteTracks.Add(track);
+                    if (isDeleteFlagList[i])
+                        deleteTracks.Add(track);
+                    else
+                        deleteTracks.Remove(track);
 
-                        }
-                        else
-                        {
-                            deleteTracks.Remove(track);
-                        }
+                    GUILayout.Space(20);
 
-                        GUILayout.Space(20);
-
-                        //ループ毎にindexを増加させる
-                        i++;
-                    }
+                    //ループ毎にindexを増加させる
+                    i++;
                 }
 
-                Debug.Log($"loop count: {i}");
-
                 //FLAMEトラックグループがあるか
-                if(groupTracks.Count > 0 && groupTracks.Find(track => track.name == "FLAME"))
+                if (groupTracks.Find(track => track.name == "FLAME"))
                 {
                     try
                     {
@@ -156,16 +118,12 @@ public class DeleteTrackTool : EditorWindow
                         isDeleteFlameTrack = GUILayout.Toggle(isDeleteFlameTrack, "FLAMEトラックを削除リストに追加する");
                         GUILayout.Space(20);
 
-                        if(isDeleteFlameTrack)
-                        {
+                        if (isDeleteFlameTrack)
                             deleteTracks.Add(groupTrack);
-                        }
                         else
-                        {
                             deleteTracks.Remove(groupTrack);
-                        }
                     }
-                    catch(System.Exception e)
+                    catch (System.Exception e)
                     {
                         Debug.Log($"error: {e}");
                     }
@@ -173,31 +131,24 @@ public class DeleteTrackTool : EditorWindow
 
                 //手動でTimelineのトラックが削除されたら、リスト作り直して
                 //TimelineとEditorの要素が合うようにする
-                if(initTrackCount != trackCount)
+                if (initTrackCount != trackCount)
                 {
-                    //手動でトラックが削除されたら初回ループフラグを有効にする
-                    isFirstLoop = true;
+                    //手動でトラックが削除されたら初期化フラグを有効にする
+                    isNeedInit = true;
                     isDeleteFlameTrack = true;
                     isDeleteFlagList.Clear();
                 }
 
-                /*GUILayout.Label($"remove count: {deleteTracks.Count}");
-                GUILayout.Space(10);
-                GUILayout.Label("trackCount: " + trackCount);
-                GUILayout.Space(10);
-                GUILayout.Label("flag list: " + isDeleteFlagList.Count);
-                GUILayout.Space(10);*/
-
-                if(GUILayout.Button("トラックを削除する"))
+                if (GUILayout.Button("トラックを削除する"))
                 {
-                    foreach(TrackAsset deleteTrack in deleteTracks)
+                    foreach (TrackAsset deleteTrack in deleteTracks)
                     {
                         timelineAsset.DeleteTrack(deleteTrack);
                         //データ削除後にTimelineに変更内容を反映する
                         TimelineEditor.Refresh(RefreshReason.ContentsAddedOrRemoved);
                     }
-                    //削除処理の後に初回ループのフラグを有効にする
-                    isFirstLoop = true;
+                    //削除処理の後にトラック数の変動があるので初期化フラグを有効にする
+                    isNeedInit = true;
                     isDeleteFlameTrack = true;
                     isDeleteFlagList.Clear();
                 }
@@ -214,3 +165,4 @@ public class DeleteTrackTool : EditorWindow
     }
 
 }
+
