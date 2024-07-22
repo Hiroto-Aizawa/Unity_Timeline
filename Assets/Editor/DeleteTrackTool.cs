@@ -16,6 +16,8 @@ public class DeleteTrackTool : EditorWindow
     private List<bool> isDeleteFlagList = new List<bool>(0);
     private bool isDeleteFlameTrack = true;
     private bool isNeedInit = true;
+    private bool isDeleteAllTrack = false;
+    private bool isToggleFirstChange = true;
     private string description;
 
     //Playable Directorがセットされた初期のトラック数
@@ -74,6 +76,25 @@ public class DeleteTrackTool : EditorWindow
                 List<TrackAsset> deleteTracks = new List<TrackAsset>(0);
 
                 GUILayout.Label($"トラック数: {trackCount}");
+
+                isDeleteAllTrack = GUILayout.Toggle(isDeleteAllTrack, "一覧にあるトラックをすべて削除する");
+
+                //isDeleteAllTrackだとListのboolが常にtrueになり任意のトラックだけをfalseにできないため
+                //isToggleFirstChangeでフラグが有効な時だけ処理を実行する
+                if (isDeleteAllTrack && isToggleFirstChange)
+                {
+                    //削除用リスト内のフラグをすべてtrueに変更する
+                    isDeleteFlagList = isDeleteFlagList.Select(e => e = true).ToList();
+                    isToggleFirstChange = false;
+                }
+                //こちらも同様にisToggleFirstChangeを利用し、isDeleteAllTrackが変更された瞬間のみ処理を実行する
+                else if (!isDeleteAllTrack && !isToggleFirstChange)
+                {
+                    //削除用リスト内のフラグをすべてfalseに変更する
+                    isDeleteFlagList = isDeleteFlagList.Select(e => e = false).ToList();
+                    //フラグをリセットする
+                    isToggleFirstChange = true;
+                }
 
                 GUILayout.Space(20);
 
@@ -136,6 +157,8 @@ public class DeleteTrackTool : EditorWindow
                     //手動でトラックが削除されたら初期化フラグを有効にする
                     isNeedInit = true;
                     isDeleteFlameTrack = true;
+                    isDeleteAllTrack = false;
+                    isToggleFirstChange = false;
                     isDeleteFlagList.Clear();
                 }
 
@@ -150,6 +173,8 @@ public class DeleteTrackTool : EditorWindow
                     //削除処理の後にトラック数の変動があるので初期化フラグを有効にする
                     isNeedInit = true;
                     isDeleteFlameTrack = true;
+                    isDeleteAllTrack = false;
+                    isToggleFirstChange = false;
                     isDeleteFlagList.Clear();
                 }
 
