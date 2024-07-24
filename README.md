@@ -10,6 +10,12 @@ Unity の Timeline 学習用の Unity プロジェクト
 
 Timeline の効率化や自動化ツールの作成なども行う。
 
+### CheckTracksOrders
+
+Timeline のトラックが仕様に沿った順番通りに配置されているかをチェックするツール
+
+配置の順番が間違っている場合はツール上にメッセージを表示する。
+
 ### DeleteTrackTool
 
 Timeline 内の空、ミュートされたトラックがある場合に一覧表示して削除できるツール
