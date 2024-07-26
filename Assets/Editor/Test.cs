@@ -1,12 +1,9 @@
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
-using UnityEditor;
-using UnityEngine.Timeline;
-using UnityEditor.Timeline;
-using UnityEngine.Playables;
 using System.Linq;
-using Sandbox.Project3D.SDFGenerate.Scripts;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Playables;
+using UnityEngine.Timeline;
 
 public class FlameCheckTracksOrder : EditorWindow
 {
@@ -26,6 +23,14 @@ public class FlameCheckTracksOrder : EditorWindow
         "モブ",
         "コーレス",
     };
+    private List<string> _stageLightOrder = new List<string>
+    {
+        "StageAmbientLight",
+        "StagePointLight0",
+        "StagePointLight1",
+        "StagePointLight2",
+        "FlareLight",
+    };
 
     [MenuItem("Flame/FlameCheckTracksOrder")]
 
@@ -42,7 +47,7 @@ public class FlameCheckTracksOrder : EditorWindow
         _timelineObj = EditorGUILayout.ObjectField("Timeline Object", _timelineObj, typeof(GameObject), true) as GameObject;
         GUILayout.Space(20);
 
-        if (_timelineObj != null)
+        if(_timelineObj != null)
         {
             PlayableDirector timelineDirector = _timelineObj.GetComponent<PlayableDirector>();
             TimelineAsset timelineAsset = timelineDirector.playableAsset as TimelineAsset;
@@ -53,13 +58,13 @@ public class FlameCheckTracksOrder : EditorWindow
             GUILayout.Label($"トラック数: {_trackCount}");
             GUILayout.Space(20);
 
-            if (_trackCount > 0)
+            if(_trackCount > 0)
             {
                 // ルートトラックの中でもGroupTrackのみをList<TrackAsset>にキャストして取得する
                 //List<TrackAsset> groupTracks = timelineAsset.GetRootTracks().OfType<GroupTrack>() as List<TrackAsset>;
                 List<TrackAsset> groupTracks = timelineAsset.GetRootTracks() as List<TrackAsset>;
 
-                if (groupTracks.Count > 0)
+                if(groupTracks.Count > 0)
                 {
                     groupTracks = groupTracks.Where(e => _correctTrackOrder.Contains(e.name)).ToList();
                     List<string> tracksName = groupTracks.Select(e => e.name).ToList();
@@ -69,10 +74,11 @@ public class FlameCheckTracksOrder : EditorWindow
                     GUIStyle style = new GUIStyle();
                     style.normal.textColor = Color.red;
 
-                    foreach (TrackAsset groupTrack in groupTracks.OfType<GroupTrack>())
+                    // groupTracksリストのGroupTrackである要素だけを取り出す
+                    foreach(TrackAsset groupTrack in groupTracks.OfType<GroupTrack>())
                     {
-
-                        if (groupTrack.name != _correctTrackOrder[i])
+                        //GroupTrackがないTimelineで要検証
+                        if(groupTrack.name != _correctTrackOrder[i])
                         {
                             GUILayout.Label($"trackName: {groupTrack.name}");
                             GUILayout.Label($"トラックの順番が間違っています", style);
@@ -83,13 +89,13 @@ public class FlameCheckTracksOrder : EditorWindow
                         {
 
                             List<TrackAsset> childTracks;
-                            switch (groupTrack.name)
+                            switch(groupTrack.name)
                             {
                                 case "全体設定":
                                     CheckGlobalSettingsTrack(groupTrack);
                                     break;
                                 case "ステージ光源":
-                                    childTracks = groupTrack.GetChildTracks() as List<TrackAsset>;
+                                    CheckStageLightTrack(groupTrack);
                                     break;
                                 case "キャラ光源":
                                     childTracks = groupTrack.GetChildTracks() as List<TrackAsset>;
@@ -143,17 +149,17 @@ public class FlameCheckTracksOrder : EditorWindow
         GUIStyle style = new GUIStyle();
         style.normal.textColor = Color.red;
 
-        if (childTracks != null)
+        if(childTracks != null)
         {
             List<TrackAsset> trackList = childTracks.Where(e => e.name == "GlobalSettings").ToList();
 
-            if (trackList.Count > 0)
+            if(trackList.Count > 0)
             {
                 List<TrackAsset> tmpTracks = childTracks.Where(e => e.name != "GlobalSettings").ToList();
 
-                if (tmpTracks.Count > 0)
+                if(tmpTracks.Count > 0)
                 {
-                    foreach (TrackAsset tmpTrack in tmpTracks)
+                    foreach(TrackAsset tmpTrack in tmpTracks)
                     {
                         GUILayout.Label($"【全体設定】 \n 不要なトラックが含まれています。");
                         GUILayout.Label($"トラック名: {tmpTrack.name}", style);
@@ -180,34 +186,42 @@ public class FlameCheckTracksOrder : EditorWindow
         GUIStyle style = new GUIStyle();
         style.normal.textColor = Color.red;
 
-        if (childTracks != null)
+        if(childTracks != null)
         {
+            //childTracksが_stageLightOrderの要素数より多い場合は不正データ
+
             // 仕様にあるトラックがあればリストに格納する
-            List<TrackAsset> trackList = childTracks.Where(e => e.name == "ShoutTime").ToList();
+            List<TrackAsset> trackList = childTracks.Where( (e, index) => e.name == _stageLightOrder[index] ).ToList();
 
             // 仕様にないトラックがあればリストに格納する
-            List<TrackAsset> invalidTracks = childTracks.Where(e => e.name != "ShoutTime").ToList();
+            List<TrackAsset> invalidTracks = childTracks.Where( (e, index) => e.name != _stageLightOrder[index] ).ToList();
 
-            if (trackList.Count > 0 && trackList != null)
+            if(trackList.Count > 0 && trackList != null)
             {
-                if (invalidTracks.Count > 0)
+                int i = 0;
+                GUILayout.Label($"【ステージ光源】 \n 不要なトラックが含まれています。");
+                foreach(TrackAsset tmpTrack in invalidTracks)
                 {
-                    GUILayout.Label($"【ステージ光源】 \n 不要なトラックが含まれています。");
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    GUILayout.Label($"トラック名: {tmpTrack.name}", style);
+                    if(tmpTrack.name != _stageLightOrder[i])
                     {
-                        GUILayout.Label($"トラック名: {tmpTrack.name}", style);
+                        GUILayout.Label($"trackName: {tmpTrack.name}");
+                        GUILayout.Label($"トラックの順番が間違っています", style);
+                        GUILayout.Label($"ここには、【{_correctTrackOrder[i]}】を配置してください");
+                        GUILayout.Space(20);
                     }
+                    i++;
                 }
             }
             else
             {
                 GUILayout.Label($"【ステージ光源】");
-                GUILayout.Label($"ShoutTimeトラックがありません🐯", style);
-                GUILayout.Label($"トラックの作成をしてください🐯");
+                GUILayout.Label($"トラックがありません", style);
+                GUILayout.Label($"トラックの作成をしてください");
 
-                if (invalidTracks.Count > 0)
+                if(invalidTracks.Count > 0)
                 {
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    foreach(TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Space(20);
                         GUILayout.Label($"・不要なトラックが含まれています。");
@@ -230,7 +244,7 @@ public class FlameCheckTracksOrder : EditorWindow
         GUIStyle style = new GUIStyle();
         style.normal.textColor = Color.red;
 
-        if (childTracks != null)
+        if(childTracks != null)
         {
             // 仕様にあるトラックがあればリストに格納する
             List<TrackAsset> trackList = childTracks.Where(e => e.name == "ShoutTime").ToList();
@@ -238,12 +252,12 @@ public class FlameCheckTracksOrder : EditorWindow
             // 仕様にないトラックがあればリストに格納する
             List<TrackAsset> invalidTracks = childTracks.Where(e => e.name != "ShoutTime").ToList();
 
-            if (trackList.Count > 0 && trackList != null)
+            if(trackList.Count > 0 && trackList != null)
             {
-                if (invalidTracks.Count > 0)
+                if(invalidTracks.Count > 0)
                 {
                     GUILayout.Label($"【キャラ光源】 \n 不要なトラックが含まれています。");
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    foreach(TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Label($"トラック名: {tmpTrack.name}", style);
                     }
@@ -252,12 +266,12 @@ public class FlameCheckTracksOrder : EditorWindow
             else
             {
                 GUILayout.Label($"【ステージ光源】");
-                GUILayout.Label($"ShoutTimeトラックがありません🐯", style);
-                GUILayout.Label($"トラックの作成をしてください🐯");
+                GUILayout.Label($"ShoutTimeトラックがありません", style);
+                GUILayout.Label($"トラックの作成をしてください");
 
-                if (invalidTracks.Count > 0)
+                if(invalidTracks.Count > 0)
                 {
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    foreach(TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Space(20);
                         GUILayout.Label($"・不要なトラックが含まれています。");
@@ -280,7 +294,7 @@ public class FlameCheckTracksOrder : EditorWindow
         GUIStyle style = new GUIStyle();
         style.normal.textColor = Color.red;
 
-        if (childTracks != null)
+        if(childTracks != null)
         {
             // 仕様にあるトラックがあればリストに格納する
             List<TrackAsset> trackList = childTracks.Where(e => e.name == "ShoutTime").ToList();
@@ -288,12 +302,12 @@ public class FlameCheckTracksOrder : EditorWindow
             // 仕様にないトラックがあればリストに格納する
             List<TrackAsset> invalidTracks = childTracks.Where(e => e.name != "ShoutTime").ToList();
 
-            if (trackList.Count > 0 && trackList != null)
+            if(trackList.Count > 0 && trackList != null)
             {
-                if (invalidTracks.Count > 0)
+                if(invalidTracks.Count > 0)
                 {
                     GUILayout.Label($"【ステージ】 \n 不要なトラックが含まれています。");
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    foreach(TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Label($"トラック名: {tmpTrack.name}", style);
                     }
@@ -302,12 +316,12 @@ public class FlameCheckTracksOrder : EditorWindow
             else
             {
                 GUILayout.Label($"【ステージ】");
-                GUILayout.Label($"ShoutTimeトラックがありません🐯", style);
-                GUILayout.Label($"トラックの作成をしてください🐯");
+                GUILayout.Label($"ShoutTimeトラックがありません", style);
+                GUILayout.Label($"トラックの作成をしてください");
 
-                if (invalidTracks.Count > 0)
+                if(invalidTracks.Count > 0)
                 {
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    foreach(TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Space(20);
                         GUILayout.Label($"・不要なトラックが含まれています。");
@@ -330,7 +344,7 @@ public class FlameCheckTracksOrder : EditorWindow
         GUIStyle style = new GUIStyle();
         style.normal.textColor = Color.red;
 
-        if (childTracks != null)
+        if(childTracks != null)
         {
             // 仕様にあるトラックがあればリストに格納する
             List<TrackAsset> trackList = childTracks.Where(e => e.name == "ShoutTime").ToList();
@@ -338,12 +352,12 @@ public class FlameCheckTracksOrder : EditorWindow
             // 仕様にないトラックがあればリストに格納する
             List<TrackAsset> invalidTracks = childTracks.Where(e => e.name != "ShoutTime").ToList();
 
-            if (trackList.Count > 0 && trackList != null)
+            if(trackList.Count > 0 && trackList != null)
             {
-                if (invalidTracks.Count > 0)
+                if(invalidTracks.Count > 0)
                 {
                     GUILayout.Label($"【エフェクト】 \n 不要なトラックが含まれています。");
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    foreach(TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Label($"トラック名: {tmpTrack.name}", style);
                     }
@@ -352,12 +366,12 @@ public class FlameCheckTracksOrder : EditorWindow
             else
             {
                 GUILayout.Label($"【エフェクト】");
-                GUILayout.Label($"ShoutTimeトラックがありません🐯", style);
-                GUILayout.Label($"トラックの作成をしてください🐯");
+                GUILayout.Label($"ShoutTimeトラックがありません", style);
+                GUILayout.Label($"トラックの作成をしてください");
 
-                if (invalidTracks.Count > 0)
+                if(invalidTracks.Count > 0)
                 {
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    foreach(TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Space(20);
                         GUILayout.Label($"・不要なトラックが含まれています。");
@@ -380,7 +394,7 @@ public class FlameCheckTracksOrder : EditorWindow
         GUIStyle style = new GUIStyle();
         style.normal.textColor = Color.red;
 
-        if (childTracks != null)
+        if(childTracks != null)
         {
             // 仕様にあるトラックがあればリストに格納する
             List<TrackAsset> trackList = childTracks.Where(e => e.name == "ShoutTime").ToList();
@@ -388,12 +402,12 @@ public class FlameCheckTracksOrder : EditorWindow
             // 仕様にないトラックがあればリストに格納する
             List<TrackAsset> invalidTracks = childTracks.Where(e => e.name != "ShoutTime").ToList();
 
-            if (trackList.Count > 0 && trackList != null)
+            if(trackList.Count > 0 && trackList != null)
             {
-                if (invalidTracks.Count > 0)
+                if(invalidTracks.Count > 0)
                 {
                     GUILayout.Label($"【音声】 \n 不要なトラックが含まれています。");
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    foreach(TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Label($"トラック名: {tmpTrack.name}", style);
                     }
@@ -402,12 +416,12 @@ public class FlameCheckTracksOrder : EditorWindow
             else
             {
                 GUILayout.Label($"【音声】");
-                GUILayout.Label($"ShoutTimeトラックがありません🐯", style);
-                GUILayout.Label($"トラックの作成をしてください🐯");
+                GUILayout.Label($"ShoutTimeトラックがありません", style);
+                GUILayout.Label($"トラックの作成をしてください");
 
-                if (invalidTracks.Count > 0)
+                if(invalidTracks.Count > 0)
                 {
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    foreach(TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Space(20);
                         GUILayout.Label($"・不要なトラックが含まれています。");
@@ -430,7 +444,7 @@ public class FlameCheckTracksOrder : EditorWindow
         GUIStyle style = new GUIStyle();
         style.normal.textColor = Color.red;
 
-        if (childTracks != null)
+        if(childTracks != null)
         {
             // 仕様にあるトラックがあればリストに格納する
             List<TrackAsset> trackList = childTracks.Where(e => e.name == "ShoutTime").ToList();
@@ -438,12 +452,12 @@ public class FlameCheckTracksOrder : EditorWindow
             // 仕様にないトラックがあればリストに格納する
             List<TrackAsset> invalidTracks = childTracks.Where(e => e.name != "ShoutTime").ToList();
 
-            if (trackList.Count > 0 && trackList != null)
+            if(trackList.Count > 0 && trackList != null)
             {
-                if (invalidTracks.Count > 0)
+                if(invalidTracks.Count > 0)
                 {
                     GUILayout.Label($"【動画】 \n 不要なトラックが含まれています。");
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    foreach(TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Label($"トラック名: {tmpTrack.name}", style);
                     }
@@ -452,12 +466,12 @@ public class FlameCheckTracksOrder : EditorWindow
             else
             {
                 GUILayout.Label($"【動画】");
-                GUILayout.Label($"ShoutTimeトラックがありません🐯", style);
-                GUILayout.Label($"トラックの作成をしてください🐯");
+                GUILayout.Label($"ShoutTimeトラックがありません", style);
+                GUILayout.Label($"トラックの作成をしてください");
 
-                if (invalidTracks.Count > 0)
+                if(invalidTracks.Count > 0)
                 {
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    foreach(TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Space(20);
                         GUILayout.Label($"・不要なトラックが含まれています。");
@@ -480,7 +494,7 @@ public class FlameCheckTracksOrder : EditorWindow
         GUIStyle style = new GUIStyle();
         style.normal.textColor = Color.red;
 
-        if (childTracks != null)
+        if(childTracks != null)
         {
             // 仕様にあるトラックがあればリストに格納する
             List<TrackAsset> trackList = childTracks.Where(e => e.name == "ShoutTime").ToList();
@@ -488,12 +502,12 @@ public class FlameCheckTracksOrder : EditorWindow
             // 仕様にないトラックがあればリストに格納する
             List<TrackAsset> invalidTracks = childTracks.Where(e => e.name != "ShoutTime").ToList();
 
-            if (trackList.Count > 0 && trackList != null)
+            if(trackList.Count > 0 && trackList != null)
             {
-                if (invalidTracks.Count > 0)
+                if(invalidTracks.Count > 0)
                 {
                     GUILayout.Label($"【モブ】 \n 不要なトラックが含まれています。");
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    foreach(TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Label($"トラック名: {tmpTrack.name}", style);
                     }
@@ -502,12 +516,12 @@ public class FlameCheckTracksOrder : EditorWindow
             else
             {
                 GUILayout.Label($"【モブ】");
-                GUILayout.Label($"ShoutTimeトラックがありません🐯", style);
-                GUILayout.Label($"トラックの作成をしてください🐯");
+                GUILayout.Label($"ShoutTimeトラックがありません", style);
+                GUILayout.Label($"トラックの作成をしてください");
 
-                if (invalidTracks.Count > 0)
+                if(invalidTracks.Count > 0)
                 {
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    foreach(TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Space(20);
                         GUILayout.Label($"・不要なトラックが含まれています。");
@@ -530,7 +544,7 @@ public class FlameCheckTracksOrder : EditorWindow
         GUIStyle style = new GUIStyle();
         style.normal.textColor = Color.red;
 
-        if (childTracks != null)
+        if(childTracks != null)
         {
             // 仕様にあるトラックがあればリストに格納する
             List<TrackAsset> trackList = childTracks.Where(e => e.name == "ShoutTime").ToList();
@@ -538,12 +552,12 @@ public class FlameCheckTracksOrder : EditorWindow
             // 仕様にないトラックがあればリストに格納する
             List<TrackAsset> invalidTracks = childTracks.Where(e => e.name != "ShoutTime").ToList();
 
-            if (trackList.Count > 0 && trackList != null)
+            if(trackList.Count > 0 && trackList != null)
             {
-                if (invalidTracks.Count > 0)
+                if(invalidTracks.Count > 0)
                 {
                     GUILayout.Label($"【コーレス】 \n 不要なトラックが含まれています。");
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    foreach(TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Label($"トラック名: {tmpTrack.name}", style);
                     }
@@ -552,12 +566,12 @@ public class FlameCheckTracksOrder : EditorWindow
             else
             {
                 GUILayout.Label($"【コーレス】");
-                GUILayout.Label($"ShoutTimeトラックがありません🐯", style);
-                GUILayout.Label($"トラックの作成をしてください🐯");
+                GUILayout.Label($"ShoutTimeトラックがありません", style);
+                GUILayout.Label($"トラックの作成をしてください");
 
-                if (invalidTracks.Count > 0)
+                if(invalidTracks.Count > 0)
                 {
-                    foreach (TrackAsset tmpTrack in invalidTracks)
+                    foreach(TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Space(20);
                         GUILayout.Label($"・不要なトラックが含まれています。");
@@ -572,8 +586,5 @@ public class FlameCheckTracksOrder : EditorWindow
             GUILayout.Label($"トラックグループ内にトラックがありません", style);
         }
     }
-
-
-
 
 }
