@@ -6,7 +6,6 @@ using UnityEngine.Timeline;
 using UnityEditor.Timeline;
 using UnityEngine.Playables;
 using System.Linq;
-using Sandbox.Project3D.SDFGenerate.Scripts;
 
 public class CheckTracksOrders : EditorWindow
 {
