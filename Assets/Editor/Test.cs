@@ -11,7 +11,7 @@ public class FlameCheckTracksOrder : EditorWindow
     private PlayableDirector _playableDirector;
     private GameObject _timelineObj;
     private int _trackCount;
-    private List<string> _correctTrackOrder = new List<string>
+    private List<string> _groupTrackOrder = new List<string>()
     {
         "全体設定",
         "ステージ光源",
@@ -23,13 +23,63 @@ public class FlameCheckTracksOrder : EditorWindow
         "モブ",
         "コーレス",
     };
-    private List<string> _stageLightOrder = new List<string>
+    private List<string> _stageLightOrder = new List<string>()
     {
         "StageAmbientLight",
         "StagePointLight0",
         "StagePointLight1",
         "StagePointLight2",
         "FlareLight",
+    };
+
+    private List<string> _characterLightOrder = new List<string>()
+    {
+        // 歌唱キャラによって要素数も番号も不規則になる...
+        // CharacterRimLightは最後に固定されている
+        "CharacterAmbientLight0",
+        "CharacterAmbientLight1",
+        "CharacterAmbientLight2",
+        "CharacterAmbientLight3",
+        "CharacterAmbientLight5",
+        "CharacterRimLight",
+    };
+
+    private List<List<string>> _stageOrder = new List<List<string>>()
+    {
+        //二次元のリストを作成する？
+        /*"NeonLight",
+        "LED_Light",
+        "Moving_Light",*/
+    };
+
+    private List<string> _effectOrder = new List<string>()
+    {
+        "通常エフェクト",
+        "キャラ追従エフェクト",
+        "ピンスポ",
+    };
+
+    private List<string> _soundOrder = new List<string>()
+    {
+        "Music",
+        "Audience",
+        "SE",
+    };
+
+    private List<string> _movieOrder = new List<string>()
+    {
+        "Movie0",
+        "Movie1",
+        "Movie2",
+    };
+
+    /// <summary>
+    /// モブトラックグループの配置順
+    /// </summary>
+    private List<string> _mobOrder = new List<string>()
+    {
+        "MobAvatar",
+        "MobAvatar",
     };
 
     [MenuItem("Flame/FlameCheckTracksOrder")]
@@ -66,7 +116,7 @@ public class FlameCheckTracksOrder : EditorWindow
 
                 if (groupTracks.Count > 0)
                 {
-                    groupTracks = groupTracks.Where(e => _correctTrackOrder.Contains(e.name)).ToList();
+                    groupTracks = groupTracks.Where(e => _groupTrackOrder.Contains(e.name)).ToList();
                     int i = 0;
 
                     GUIStyle style = new GUIStyle();
@@ -76,11 +126,11 @@ public class FlameCheckTracksOrder : EditorWindow
                     foreach (TrackAsset groupTrack in groupTracks)
                     {
                         //GroupTrackがないTimelineで要検証
-                        if (groupTrack.name != _correctTrackOrder[i])
+                        if (groupTrack.name != _groupTrackOrder[i])
                         {
                             GUILayout.Label($"trackName: {groupTrack.name}");
                             GUILayout.Label($"トラックの順番が間違っています", style);
-                            GUILayout.Label($"ここには、【{_correctTrackOrder[i]}】を配置してください");
+                            GUILayout.Label($"ここには、【{_groupTrackOrder[i]}】を配置してください");
                             GUILayout.Space(20);
                         }
                         else
@@ -189,7 +239,7 @@ public class FlameCheckTracksOrder : EditorWindow
                 GUILayout.Label($"【ステージ光源】");
                 foreach (TrackAsset childTrack in childTracks)
                 {
-                    Debug.Log($"correctTrackName: {childTrack.name} || order: {_stageLightOrder[i]}");
+                    //Debug.Log($"correctTrackName: {childTrack.name} || order: {_stageLightOrder[i]}");
                     if (childTrack.name != _stageLightOrder[i])
                     {
                         GUILayout.Label($"trackName: {childTrack.name}");
@@ -212,7 +262,7 @@ public class FlameCheckTracksOrder : EditorWindow
                     foreach (TrackAsset irregularTrack in irregularTracks)
                     {
                         GUILayout.Space(20);
-                        GUILayout.Label($"・不要なトラックが含まれています。");
+                        GUILayout.Label($"不要なトラックが含まれています。");
                         GUILayout.Label($" └トラック名: {irregularTrack.name}", style);
                     }
                 }
@@ -220,6 +270,8 @@ public class FlameCheckTracksOrder : EditorWindow
                 {
                     List<string> childNameList = childTracks.Select(e => e.name).ToList();
                     List<string> correctNameList = _stageLightOrder;
+
+                    // 差集合を求める
                     var requiredTracks = correctNameList.Except(childNameList);
                     foreach (string requiredTrack in requiredTracks)
                     {
@@ -274,7 +326,7 @@ public class FlameCheckTracksOrder : EditorWindow
                     foreach (TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Space(20);
-                        GUILayout.Label($"・不要なトラックが含まれています。");
+                        GUILayout.Label($"不要なトラックが含まれています。");
                         GUILayout.Label($" └トラック名: {tmpTrack.name}", style);
                     }
                 }
@@ -324,7 +376,7 @@ public class FlameCheckTracksOrder : EditorWindow
                     foreach (TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Space(20);
-                        GUILayout.Label($"・不要なトラックが含まれています。");
+                        GUILayout.Label($"不要なトラックが含まれています。");
                         GUILayout.Label($" └トラック名: {tmpTrack.name}", style);
                     }
                 }
@@ -374,7 +426,7 @@ public class FlameCheckTracksOrder : EditorWindow
                     foreach (TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Space(20);
-                        GUILayout.Label($"・不要なトラックが含まれています。");
+                        GUILayout.Label($"不要なトラックが含まれています。");
                         GUILayout.Label($" └トラック名: {tmpTrack.name}", style);
                     }
                 }
@@ -424,7 +476,7 @@ public class FlameCheckTracksOrder : EditorWindow
                     foreach (TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Space(20);
-                        GUILayout.Label($"・不要なトラックが含まれています。");
+                        GUILayout.Label($"不要なトラックが含まれています。");
                         GUILayout.Label($" └トラック名: {tmpTrack.name}", style);
                     }
                 }
@@ -474,7 +526,7 @@ public class FlameCheckTracksOrder : EditorWindow
                     foreach (TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Space(20);
-                        GUILayout.Label($"・不要なトラックが含まれています。");
+                        GUILayout.Label($"不要なトラックが含まれています。");
                         GUILayout.Label($" └トラック名: {tmpTrack.name}", style);
                     }
                 }
@@ -524,7 +576,7 @@ public class FlameCheckTracksOrder : EditorWindow
                     foreach (TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Space(20);
-                        GUILayout.Label($"・不要なトラックが含まれています。");
+                        GUILayout.Label($"不要なトラックが含まれています。");
                         GUILayout.Label($" └トラック名: {tmpTrack.name}", style);
                     }
                 }
@@ -574,7 +626,7 @@ public class FlameCheckTracksOrder : EditorWindow
                     foreach (TrackAsset tmpTrack in invalidTracks)
                     {
                         GUILayout.Space(20);
-                        GUILayout.Label($"・不要なトラックが含まれています。");
+                        GUILayout.Label($"不要なトラックが含まれています。");
                         GUILayout.Label($" └トラック名: {tmpTrack.name}", style);
                     }
                 }
