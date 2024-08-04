@@ -23,3 +23,12 @@ Timeline 内の空、ミュートされたトラックがある場合に一覧�
 削除したいトラックのチェックボックスをオンすることで削除用のリストに追加されます。
 
 ツール下部の「トラックを削除する」ボタンをクリックするとリストにあるトラックをすべて削除します。
+
+### 使用3Dモデル（キャラクター）
+
+・[Unityちゃん](https://unity-chan.com/contents/guideline/)
+
+・[3Dモデル「止丸式初音ミクNT」](https://booth.pm/ja/items/3226395?registration=1)
+
+・[オリジナル3Dモデル「生駒ミル」Original 3D Character "Miru Ikoma" Cloth ver.](https://booth.pm/ja/items/3521047)
+
