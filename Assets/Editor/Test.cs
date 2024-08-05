@@ -406,7 +406,6 @@ public class FlameCheckTracksOrder : EditorWindow
             // 仕様を満たすトラック数が最低限あり、
             if (regularTracks.Count >= minTrackCount && regularTracks.Count == childTracks.Count)
             {
-                int i = 0;
                 GUILayout.Label($"【キャラ光源】");
                 GUILayout.Space(20);
 
