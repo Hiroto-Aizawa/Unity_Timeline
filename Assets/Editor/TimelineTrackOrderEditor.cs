@@ -2,8 +2,8 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.Timeline;
 using UnityEngine.Playables;
-using System.Linq;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor.Timeline;
 
 public class TimelineTrackOrderEditor : EditorWindow
@@ -38,30 +38,24 @@ public class TimelineTrackOrderEditor : EditorWindow
 
     private void CheckAndReorderTracks()
     {
+        if (_timelineAsset == null)
+        {
+            Debug.LogWarning("Timeline Asset is not assigned.");
+            return;
+        }
+
         var tracks = _timelineAsset.GetOutputTracks().ToList();
 
         // Create a dictionary from track names to their current index
-        var trackIndexMap = new Dictionary<string, int>();
-        for (int i = 0; i < tracks.Count; i++)
-        {
-            trackIndexMap[tracks[i].name] = i;
-        }
+        dynamic trackDictionary = tracks.ToDictionary(track => track.name);
 
         // Check if the order matches the desired order
-        bool needsReordering = false;
-        for (int i = 0; i < _desiredTrackOrder.Count; i++)
-        {
-            if (!trackIndexMap.ContainsKey(_desiredTrackOrder[i]) || trackIndexMap[_desiredTrackOrder[i]] != i)
-            {
-                needsReordering = true;
-                break;
-            }
-        }
+        bool needsReordering = !_desiredTrackOrder.SequenceEqual(tracks.Select(track => track.name));
 
         if (needsReordering)
         {
             Debug.Log("Reordering tracks...");
-            ReorderTracks(tracks);
+            ReorderTracks(tracks, trackDictionary);
         }
         else
         {
@@ -69,31 +63,47 @@ public class TimelineTrackOrderEditor : EditorWindow
         }
     }
 
-    private void ReorderTracks(List<TrackAsset> tracks)
+    private void ReorderTracks(List<TrackAsset> tracks, dynamic trackDictionary)
     {
         Undo.RecordObject(_timelineAsset, "Reorder Tracks");
 
-        // Remove all tracks
+        // Remove tracks from the timeline
         foreach (var track in tracks)
         {
             _timelineAsset.DeleteTrack(track);
         }
 
-        // データ削除後にTiemlineの変更内容を反映する
+        //データ削除後にTimelineに変更内容を反映する
         TimelineEditor.Refresh(RefreshReason.ContentsAddedOrRemoved);
 
         // Add tracks in the desired order
         foreach (var trackName in _desiredTrackOrder)
         {
-            var track = tracks.FirstOrDefault(t => t.name == trackName);
-            if (track != null)
+            if (trackDictionary.TryGetValue(trackName, out TrackAsset track))
             {
-                //_timelineAsset.AddTrack(track.GetType(), track.parent, trackName);
                 _timelineAsset.CreateTrack(track.GetType(), null, trackName);
+                CopyTrackProperties(track, _timelineAsset.GetOutputTracks().Last());
             }
         }
 
         EditorUtility.SetDirty(_timelineAsset);
         AssetDatabase.SaveAssets();
+        //データ削除後にTimelineに変更内容を反映する
+        TimelineEditor.Refresh(RefreshReason.ContentsAddedOrRemoved);
+    }
+
+    private void CopyTrackProperties(TrackAsset sourceTrack, TrackAsset targetTrack)
+    {
+        foreach (var clip in sourceTrack.GetClips())
+        {
+            // Duplicate clip in the new track
+            var newClip = targetTrack.CreateClip<PlayableAsset>();//clip.asset.GetType()
+            newClip.displayName = clip.displayName;
+            newClip.start = clip.start;
+            newClip.duration = clip.duration;
+
+            // Copy properties (e.g., in case of custom properties or animation properties)
+            // This is a placeholder; actual property copying may vary based on clip types
+        }
     }
 }
