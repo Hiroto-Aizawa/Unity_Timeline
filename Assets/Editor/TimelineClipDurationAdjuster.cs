@@ -13,7 +13,7 @@ public class TimelineClipDurationAdjuster : EditorWindow
 {
     private GameObject timelineObj;
 
-    private string baseClipName = "baseClip";
+    private static string baseClipName = "baseClip";
 
     private bool isChangeBaseClipName = false;
 
