@@ -1,9 +1,13 @@
 using UnityEngine;
 using UnityEditor;
+using System.Collections.Generic;
+using PlasticPipe.PlasticProtocol.Messages;
 
 public class ModelAutoAlignment : EditorWindow
 {
     private GameObject parentObj;
+    [SerializeField]List<GameObject> parentList = new List<GameObject>();
+    // [SerializeField]List<GameObjectAndTransform> gameObjList = new List<GameObjectAndTransform>();
 
     [MenuItem("Tools/ModelAutoAlignment")]
     private static void Init()
@@ -12,41 +16,58 @@ public class ModelAutoAlignment : EditorWindow
         window.Show();
     }
 
+
     private void OnGUI()
     {
         GUILayout.Space(20);
         parentObj = EditorGUILayout.ObjectField("Parent Object", parentObj, typeof(GameObject), true) as GameObject;
-        GUILayout.Space(20);
-
+        
         if(parentObj == null)
         {
             EditorGUILayout.HelpBox("親オブジェクトが指定されていません", MessageType.Error);
-            return;
+            //return;
+        }
+        else
+        {
+            // 親自身も含めて子供を取得している点に注意
+            Transform[] children = parentObj.GetComponentsInChildren<Transform>();
+            // 親オブジェクトを含めない子だけのリストを作成する
+            Transform[] actualChildren = new Transform[children.Length - 1];
+
+            for(int i = 1; i < children.Length; i++)
+            {
+                actualChildren[i - 1] = children[i];
+            }
+
+            int childCount = actualChildren.Length;
+            float[] xPositions = GetXPositions(childCount);
+            // キャラモデルのz座標は1.25に固定する
+            float zPosition = 1.25f;
+
+            // 子オブジェクトの位置を変更する
+            for(int i = 0; i < childCount; i++)
+            {
+                Vector3 newPosition = actualChildren[i].position;
+                newPosition.x = xPositions[i];
+                newPosition.z = zPosition;
+                actualChildren[i].position = newPosition;
+                
+            }
         }
 
-        // 親自身も含めて子供を取得している点に注意
-        Transform[] children = parentObj.GetComponentsInChildren<Transform>();
-        // 親オブジェクトを含めない子だけのリストを作成する
-        Transform[] actualChildren = new Transform[children.Length - 1];
+        GUILayout.Space(20);
 
-        for(int i = 1; i < children.Length; i++)
+        // このクラスのSerializedObjectを取得する
+        var so = new SerializedObject(this);
+        so.Update();
+        // 第二引数をtrueにしたPropertyFieldで描画する
+        EditorGUILayout.PropertyField(so.FindProperty("parentList"), true);
+        so.ApplyModifiedProperties();
+        GUILayout.Space(20);
+
+        if (GUILayout.Button("Adjust Durations"))
         {
-            actualChildren[i - 1] = children[i];
-        }
-
-        int childCount = actualChildren.Length;
-        float[] xPositions = GetXPositions(childCount);
-        // キャラモデルのz座標は1.25に固定する
-        float zPosition = 1.25f;
-
-        // 子オブジェクトの位置を変更する
-        for(int i = 0; i < childCount; i++)
-        {
-            Vector3 newPosition = actualChildren[i].position;
-            newPosition.x = xPositions[i];
-            newPosition.z = zPosition;
-            actualChildren[i].position = newPosition;
-            
+            Debug.Log("Button clicked");
         }
     }
 
@@ -78,4 +99,19 @@ public class ModelAutoAlignment : EditorWindow
         }
     }
 
+}
+
+public class GameObjectAndTransform{
+    public GameObject gameObject;
+    public Transform transform;
+
+    // コンストラクタ：GameObjectを指定してインスタンスを作成する
+    public GameObjectAndTransform(GameObject obj){
+        gameObject = obj;
+        transform = obj.transform;
+    }
+
+    public Vector3 GetPosition(){
+        return transform.position;
+    }
 }
