@@ -6,8 +6,8 @@ using PlasticPipe.PlasticProtocol.Messages;
 public class ModelAutoAlignment : EditorWindow
 {
     private GameObject parentObj;
-    [SerializeField]List<GameObject> parentList = new List<GameObject>();
-    // [SerializeField]List<GameObjectAndTransform> gameObjList = new List<GameObjectAndTransform>();
+    //[SerializeField]List<GameObject> parentList = new List<GameObject>();
+    [SerializeField]List<GameObjectAndTransform> gameObjList = new List<GameObjectAndTransform>();
 
     [MenuItem("Tools/ModelAutoAlignment")]
     private static void Init()
@@ -61,7 +61,7 @@ public class ModelAutoAlignment : EditorWindow
         var so = new SerializedObject(this);
         so.Update();
         // 第二引数をtrueにしたPropertyFieldで描画する
-        EditorGUILayout.PropertyField(so.FindProperty("parentList"), true);
+        EditorGUILayout.PropertyField(so.FindProperty("gameObjList"), true);
         so.ApplyModifiedProperties();
         GUILayout.Space(20);
 
@@ -101,17 +101,20 @@ public class ModelAutoAlignment : EditorWindow
 
 }
 
+[System.Serializable]
 public class GameObjectAndTransform{
     public GameObject gameObject;
-    public Transform transform;
+    // public Transform transform;
+    public Vector3 position;
 
     // コンストラクタ：GameObjectを指定してインスタンスを作成する
     public GameObjectAndTransform(GameObject obj){
         gameObject = obj;
-        transform = obj.transform;
+        //transform = obj.transform;
+        position = obj.transform.position;
     }
 
-    public Vector3 GetPosition(){
-        return transform.position;
-    }
+    // public Vector3 GetPosition(){
+    //     return transform.position;
+    // }
 }
