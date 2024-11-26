@@ -5,9 +5,11 @@ using PlasticPipe.PlasticProtocol.Messages;
 
 public class ModelAutoAlignment : EditorWindow
 {
+    private Vector2 _scrollPosition = Vector2.zero;
     private GameObject parentObj;
     //[SerializeField]List<GameObject> parentList = new List<GameObject>();
-    [SerializeField]List<GameObjectAndTransform> gameObjList = new List<GameObjectAndTransform>();
+    [SerializeField] List<GameObjectAndTransform> gameObjList = new List<GameObjectAndTransform>();
+    GameObjectAndTransform gameObjectAndTransform = new GameObjectAndTransform();
 
     [MenuItem("Tools/ModelAutoAlignment")]
     private static void Init()
@@ -19,10 +21,11 @@ public class ModelAutoAlignment : EditorWindow
 
     private void OnGUI()
     {
+        _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
         GUILayout.Space(20);
         parentObj = EditorGUILayout.ObjectField("Parent Object", parentObj, typeof(GameObject), true) as GameObject;
-        
-        if(parentObj == null)
+
+        if (parentObj == null)
         {
             EditorGUILayout.HelpBox("親オブジェクトが指定されていません", MessageType.Error);
             //return;
@@ -34,7 +37,7 @@ public class ModelAutoAlignment : EditorWindow
             // 親オブジェクトを含めない子だけのリストを作成する
             Transform[] actualChildren = new Transform[children.Length - 1];
 
-            for(int i = 1; i < children.Length; i++)
+            for (int i = 1; i < children.Length; i++)
             {
                 actualChildren[i - 1] = children[i];
             }
@@ -45,13 +48,13 @@ public class ModelAutoAlignment : EditorWindow
             float zPosition = 1.25f;
 
             // 子オブジェクトの位置を変更する
-            for(int i = 0; i < childCount; i++)
+            for (int i = 0; i < childCount; i++)
             {
                 Vector3 newPosition = actualChildren[i].position;
                 newPosition.x = xPositions[i];
                 newPosition.z = zPosition;
                 actualChildren[i].position = newPosition;
-                
+
             }
         }
 
@@ -65,16 +68,22 @@ public class ModelAutoAlignment : EditorWindow
         so.ApplyModifiedProperties();
         GUILayout.Space(20);
 
-        if (GUILayout.Button("Adjust Durations"))
+        if (0 < gameObjList.Count && gameObjList[0].gameObject != null)
         {
-            Debug.Log("Button clicked");
+            if (GUILayout.Button("Adjust Durations"))
+            {
+                gameObjectAndTransform.UpdateVector3(gameObjList);
+                Debug.Log("Button clicked");
+            }
         }
+
+        EditorGUILayout.EndScrollView();
     }
 
     // 子オブジェクトの数によってX座標の配列を返す
     float[] GetXPositions(int count)
     {
-        switch(count)
+        switch (count)
         {
             case 1:
                 return new float[] { 0 };
@@ -91,30 +100,40 @@ public class ModelAutoAlignment : EditorWindow
             default:
                 // それ以外の場合はX座標を0に指定する
                 float[] defaultPositions = new float[count];
-                for(int i = 0; i < count; i++)
+                for (int i = 0; i < count; i++)
                 {
                     defaultPositions[i] = 0f;
                 }
                 return defaultPositions;
         }
     }
-
 }
 
 [System.Serializable]
-public class GameObjectAndTransform{
+public class GameObjectAndTransform
+{
     public GameObject gameObject;
     // public Transform transform;
     public Vector3 position;
 
     // コンストラクタ：GameObjectを指定してインスタンスを作成する
-    public GameObjectAndTransform(GameObject obj){
-        gameObject = obj;
-        //transform = obj.transform;
-        position = obj.transform.position;
-    }
-
-    // public Vector3 GetPosition(){
-    //     return transform.position;
+    // public GameObjectAndTransform(GameObject obj)
+    // {
+    //     gameObject = obj;
+    //     position = obj.transform.position;
     // }
+
+    public void UpdateVector3(List<GameObjectAndTransform> gameObjList)
+    {
+        if (0 < gameObjList.Count)
+        {
+            for (int i = 0; i < gameObjList.Count; i++)
+            {
+                Debug.Log(
+                    $"count: {i} \n gameObj: {gameObjList[i].gameObject.name} \n vector3: {gameObjList[i].position}"
+                );
+            }
+        }
+        Debug.Log("UpdateVector3 called");
+    }
 }
