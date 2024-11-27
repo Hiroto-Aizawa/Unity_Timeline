@@ -19,8 +19,12 @@ public class ModelAutoAlignment : EditorWindow
 
     private void OnGUI()
     {
+        // Windowを超えるUIがある場合はスクロールバーを表示する
         _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
+
         GUILayout.Space(20);
+        #region PARENT_OBJ
+        EditorGUILayout.LabelField("キャラモデルの親オブジェクト", EditorStyles.boldLabel);
         parentObj = EditorGUILayout.ObjectField("Parent Object", parentObj, typeof(GameObject), true) as GameObject;
 
         if (parentObj == null)
@@ -55,9 +59,12 @@ public class ModelAutoAlignment : EditorWindow
 
             }
         }
+        #endregion
 
         GUILayout.Space(20);
 
+        #region PARTICLE_OBJ
+        EditorGUILayout.LabelField("エフェクトの親オブジェクト", EditorStyles.boldLabel);
         particleObj = EditorGUILayout.ObjectField("particle Object", particleObj, typeof(GameObject), true) as GameObject;
 
         vec3 = EditorGUILayout.Vector3Field("Position", vec3);
@@ -67,26 +74,37 @@ public class ModelAutoAlignment : EditorWindow
         if (particleObj != null)
         {
             Transform[] tmpChildren = particleObj.GetComponentsInChildren<Transform>();
-            // tmpChildrenは親も含んだ配列なので、親を除いた配列を作成
+            // tmpChildrenは親も含んだ配列なので、親の要素分を除いた長さの配列を作成
             Transform[] particleChildren = new Transform[tmpChildren.Length - 1];
 
             if (GUILayout.Button("座標の更新"))
             {
+                // リストから親の要素を除外するために、particleChildrenに親以外の要素を入れていく
+                // 親要素がtmpChildrenの0番目にいるので、1番目からparticleChildrenに入れる
+                for (int i = 1; i < tmpChildren.Length; i++)
+                {
+                    particleChildren[i - 1] = tmpChildren[i];
+                }
+
                 for (int i = 0; i < particleChildren.Length; i++)
                 {
                     Vector3 tmpPosition = particleChildren[i].position;
-                    Debug.Log($"name: {particleChildren[i].name} \n position: {tmpPosition}");
-
                     // indexを利用してvec3の値をかけて代入する
                     // これによって等間隔に整列させる
-                    tmpPosition.x = vec3.x * i;
-                    tmpPosition.y = vec3.y * i;
-                    tmpPosition.z = vec3.z * i;
+                    if (vec3.x != 0)
+                        tmpPosition.x = vec3.x * i;
+                    if (vec3.y != 0)
+                        tmpPosition.y = vec3.y * i;
+                    if (vec3.z != 0)
+                        tmpPosition.z = vec3.z * i;
+
+                    Debug.Log($"name: {particleChildren[i].name} \n position: {tmpPosition}");
 
                     particleChildren[i].position = tmpPosition;
                 }
             }
         }
+        #endregion
 
         GUILayout.Space(20);
 
@@ -120,39 +138,4 @@ public class ModelAutoAlignment : EditorWindow
                 return defaultPositions;
         }
     }
-}
-
-[System.Serializable]
-public class GameObjectAndTransform
-{
-    public GameObject gameObject;
-    public Vector3 position;
-
-    // コンストラクタ：GameObjectを指定してインスタンスを作成する
-    public GameObjectAndTransform(GameObject gameObject)
-    {
-        this.gameObject = gameObject;
-        //position = obj.transform.position;
-        this.position = Vector3.zero;
-    }
-    // public List<GameObjectAndTransform> list = new List<GameObjectAndTransform>();
-
-    // public void UpdateVector3(List<GameObjectAndTransform> gameObjList)
-    // {
-    //     if (0 < gameObjList.Count)
-    //     {
-    //         for (int i = 0; i < gameObjList.Count; i++)
-    //         {
-    //             Debug.Log(
-    //                 $"count: {i} \n gameObj: {gameObjList[i].gameObject.name} \n vector3: {gameObjList[i].position}"
-    //             );
-    //         }
-    //     }
-    //     Debug.Log("UpdateVector3 called");
-    // }
-
-    // public void AddElement(GameObject gameObj)
-    // {
-    //     list.Add(new GameObjectAndTransform(gameObj));
-    // }
 }
