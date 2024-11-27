@@ -1,15 +1,13 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
-using PlasticPipe.PlasticProtocol.Messages;
 
 public class ModelAutoAlignment : EditorWindow
 {
     private Vector2 _scrollPosition = Vector2.zero;
     private GameObject parentObj;
-    //[SerializeField]List<GameObject> parentList = new List<GameObject>();
-    [SerializeField] List<GameObjectAndTransform> gameObjList = new List<GameObjectAndTransform>();
-    GameObjectAndTransform gameObjectAndTransform = new GameObjectAndTransform();
+    private GameObject particleObj;
+    private Vector3 vec3;
 
     [MenuItem("Tools/ModelAutoAlignment")]
     private static void Init()
@@ -60,22 +58,37 @@ public class ModelAutoAlignment : EditorWindow
 
         GUILayout.Space(20);
 
-        // このクラスのSerializedObjectを取得する
-        var so = new SerializedObject(this);
-        so.Update();
-        // 第二引数をtrueにしたPropertyFieldで描画する
-        EditorGUILayout.PropertyField(so.FindProperty("gameObjList"), true);
-        so.ApplyModifiedProperties();
+        particleObj = EditorGUILayout.ObjectField("particle Object", particleObj, typeof(GameObject), true) as GameObject;
+
+        vec3 = EditorGUILayout.Vector3Field("Position", vec3);
+
         GUILayout.Space(20);
 
-        if (0 < gameObjList.Count && gameObjList[0].gameObject != null)
+        if (particleObj != null)
         {
-            if (GUILayout.Button("Adjust Durations"))
+            Transform[] tmpChildren = particleObj.GetComponentsInChildren<Transform>();
+            // tmpChildrenは親も含んだ配列なので、親を除いた配列を作成
+            Transform[] particleChildren = new Transform[tmpChildren.Length - 1];
+
+            if (GUILayout.Button("座標の更新"))
             {
-                gameObjectAndTransform.UpdateVector3(gameObjList);
-                Debug.Log("Button clicked");
+                for (int i = 0; i < particleChildren.Length; i++)
+                {
+                    Vector3 tmpPosition = particleChildren[i].position;
+                    Debug.Log($"name: {particleChildren[i].name} \n position: {tmpPosition}");
+
+                    // indexを利用してvec3の値をかけて代入する
+                    // これによって等間隔に整列させる
+                    tmpPosition.x = vec3.x * i;
+                    tmpPosition.y = vec3.y * i;
+                    tmpPosition.z = vec3.z * i;
+
+                    particleChildren[i].position = tmpPosition;
+                }
             }
         }
+
+        GUILayout.Space(20);
 
         EditorGUILayout.EndScrollView();
     }
@@ -113,27 +126,33 @@ public class ModelAutoAlignment : EditorWindow
 public class GameObjectAndTransform
 {
     public GameObject gameObject;
-    // public Transform transform;
     public Vector3 position;
 
     // コンストラクタ：GameObjectを指定してインスタンスを作成する
-    // public GameObjectAndTransform(GameObject obj)
+    public GameObjectAndTransform(GameObject gameObject)
+    {
+        this.gameObject = gameObject;
+        //position = obj.transform.position;
+        this.position = Vector3.zero;
+    }
+    // public List<GameObjectAndTransform> list = new List<GameObjectAndTransform>();
+
+    // public void UpdateVector3(List<GameObjectAndTransform> gameObjList)
     // {
-    //     gameObject = obj;
-    //     position = obj.transform.position;
+    //     if (0 < gameObjList.Count)
+    //     {
+    //         for (int i = 0; i < gameObjList.Count; i++)
+    //         {
+    //             Debug.Log(
+    //                 $"count: {i} \n gameObj: {gameObjList[i].gameObject.name} \n vector3: {gameObjList[i].position}"
+    //             );
+    //         }
+    //     }
+    //     Debug.Log("UpdateVector3 called");
     // }
 
-    public void UpdateVector3(List<GameObjectAndTransform> gameObjList)
-    {
-        if (0 < gameObjList.Count)
-        {
-            for (int i = 0; i < gameObjList.Count; i++)
-            {
-                Debug.Log(
-                    $"count: {i} \n gameObj: {gameObjList[i].gameObject.name} \n vector3: {gameObjList[i].position}"
-                );
-            }
-        }
-        Debug.Log("UpdateVector3 called");
-    }
+    // public void AddElement(GameObject gameObj)
+    // {
+    //     list.Add(new GameObjectAndTransform(gameObj));
+    // }
 }
