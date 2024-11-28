@@ -1,13 +1,20 @@
+#if UNITY_EDITOR
+
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using UnityEngine.Rendering;
 
+/// <summary>
+/// 【エディタ拡張】
+/// 親オブジェクトが持つ子オブジェクト整列させる
+/// </summary>
 public class ModelAutoAlignment : EditorWindow
 {
     private Vector2 _scrollPosition = Vector2.zero;
-    private GameObject parentObj;
-    private GameObject particleObj;
-    private Vector3 vec3;
+    private GameObject _parentObj;
+    private GameObject _effectObj;
+    private Vector3 _vec3;
 
     [MenuItem("Tools/ModelAutoAlignment")]
     private static void Init()
@@ -25,39 +32,16 @@ public class ModelAutoAlignment : EditorWindow
         GUILayout.Space(20);
         #region PARENT_OBJ
         EditorGUILayout.LabelField("キャラモデルの親オブジェクト", EditorStyles.boldLabel);
-        parentObj = EditorGUILayout.ObjectField("Parent Object", parentObj, typeof(GameObject), true) as GameObject;
+        _parentObj = EditorGUILayout.ObjectField("Parent Object", _parentObj, typeof(GameObject), true) as GameObject;
 
-        if (parentObj == null)
+        if(_parentObj == null)
         {
-            EditorGUILayout.HelpBox("親オブジェクトが指定されていません", MessageType.Error);
-            //return;
+            GUILayout.Space(20);
+            EditorGUILayout.HelpBox("キャラモデルの親オブジェクトが指定されていません", MessageType.Error);
         }
         else
         {
-            // 親自身も含めて子供を取得している点に注意
-            Transform[] children = parentObj.GetComponentsInChildren<Transform>();
-            // 親オブジェクトを含めない子だけのリストを作成する
-            Transform[] actualChildren = new Transform[children.Length - 1];
-
-            for (int i = 1; i < children.Length; i++)
-            {
-                actualChildren[i - 1] = children[i];
-            }
-
-            int childCount = actualChildren.Length;
-            float[] xPositions = GetXPositions(childCount);
-            // キャラモデルのz座標は1.25に固定する
-            float zPosition = 1.25f;
-
-            // 子オブジェクトの位置を変更する
-            for (int i = 0; i < childCount; i++)
-            {
-                Vector3 newPosition = actualChildren[i].position;
-                newPosition.x = xPositions[i];
-                newPosition.z = zPosition;
-                actualChildren[i].position = newPosition;
-
-            }
+            ChangeCharaChildrenPos(_parentObj);
         }
         #endregion
 
@@ -65,43 +49,16 @@ public class ModelAutoAlignment : EditorWindow
 
         #region PARTICLE_OBJ
         EditorGUILayout.LabelField("エフェクトの親オブジェクト", EditorStyles.boldLabel);
-        particleObj = EditorGUILayout.ObjectField("particle Object", particleObj, typeof(GameObject), true) as GameObject;
-
-        vec3 = EditorGUILayout.Vector3Field("Position", vec3);
+        _effectObj = EditorGUILayout.ObjectField("particle Object", _effectObj, typeof(GameObject), true) as GameObject;
+        _vec3 = EditorGUILayout.Vector3Field("Position", _vec3);
 
         GUILayout.Space(20);
 
-        if (particleObj != null)
+        if(_effectObj != null)
         {
-            Transform[] tmpChildren = particleObj.GetComponentsInChildren<Transform>();
-            // tmpChildrenは親も含んだ配列なので、親の要素分を除いた長さの配列を作成
-            Transform[] particleChildren = new Transform[tmpChildren.Length - 1];
-
-            if (GUILayout.Button("座標の更新"))
+            if(GUILayout.Button("座標の更新"))
             {
-                // リストから親の要素を除外するために、particleChildrenに親以外の要素を入れていく
-                // 親要素がtmpChildrenの0番目にいるので、1番目からparticleChildrenに入れる
-                for (int i = 1; i < tmpChildren.Length; i++)
-                {
-                    particleChildren[i - 1] = tmpChildren[i];
-                }
-
-                for (int i = 0; i < particleChildren.Length; i++)
-                {
-                    Vector3 tmpPosition = particleChildren[i].position;
-                    // indexを利用してvec3の値をかけて代入する
-                    // これによって等間隔に整列させる
-                    if (vec3.x != 0)
-                        tmpPosition.x = vec3.x * i;
-                    if (vec3.y != 0)
-                        tmpPosition.y = vec3.y * i;
-                    if (vec3.z != 0)
-                        tmpPosition.z = vec3.z * i;
-
-                    Debug.Log($"name: {particleChildren[i].name} \n position: {tmpPosition}");
-
-                    particleChildren[i].position = tmpPosition;
-                }
+                ChangeEffectChildrenPos(_effectObj, _vec3);
             }
         }
         #endregion
@@ -111,10 +68,15 @@ public class ModelAutoAlignment : EditorWindow
         EditorGUILayout.EndScrollView();
     }
 
-    // 子オブジェクトの数によってX座標の配列を返す
-    float[] GetXPositions(int count)
+
+    /// <summary>
+    /// 子オブジェクトの数によって整列させるためのX座標の配列を返す関数
+    /// </summary>
+    /// <param name="count"></param>
+    /// <returns></returns>
+    private float[] GetXPositions(int count)
     {
-        switch (count)
+        switch(count)
         {
             case 1:
                 return new float[] { 0 };
@@ -131,11 +93,66 @@ public class ModelAutoAlignment : EditorWindow
             default:
                 // それ以外の場合はX座標を0に指定する
                 float[] defaultPositions = new float[count];
-                for (int i = 0; i < count; i++)
+                for(int i = 0; i < count; i++)
                 {
                     defaultPositions[i] = 0f;
                 }
                 return defaultPositions;
         }
     }
+
+    /// <summary>
+    /// 子オブジェクトの数に応じて整列させる関数
+    /// </summary>
+    /// <param name="parent"></param>
+    private void ChangeCharaChildrenPos(GameObject parent)
+    {
+        // 親＆孫以下のオブジェクトを含まない、子配列を作成
+        Transform[] children = new Transform[parent.transform.childCount];
+        int childCount = children.Length;
+        //子の要素数に応じて整列させるx座標を返す
+        float[] xPositions = GetXPositions(childCount);
+        // z座標は1.25で固定する
+        float zPosition = 1.25f;
+
+        for(int i = 0; i < childCount; i++)
+        {
+            // 配列に子を格納する
+            children[i] = parent.transform.GetChild(i);
+
+            // 順番に整列させる
+            Vector3 newPosition = children[i].position;
+            newPosition.x = xPositions[i];
+            newPosition.z = zPosition;
+            children[i].position = newPosition;
+        }
+    }
+
+    /// <summary>
+    /// 入力されたVector3を元に子オブジェクトを整列させる関数
+    /// </summary>
+    /// <param name="parent"></param>
+    /// <param name="vec3"></param>
+    private void ChangeEffectChildrenPos(GameObject parent, Vector3 vec3)
+    {
+        Transform[] effectChildren = new Transform[parent.transform.childCount];
+        int effectChildCount = effectChildren.Length;
+
+        for(int i = 0; i < effectChildCount; i++)
+        {
+            effectChildren[i] = parent.transform.GetChild(i);
+
+            Vector3 tmpPosition = effectChildren[i].position;
+            if(vec3.x != 0)
+                tmpPosition.x = vec3.x * i;
+            if(vec3.y != 0)
+                tmpPosition.y = vec3.y * i;
+            if(vec3.z != 0)
+                tmpPosition.z = vec3.z * i;
+
+            effectChildren[i].position = tmpPosition;
+        }
+    }
 }
+
+#endif
