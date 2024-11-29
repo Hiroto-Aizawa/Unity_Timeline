@@ -87,6 +87,7 @@ public class ModelAutoAlignment : EditorWindow
             case 4:
                 return new float[] { -2.25f, -0.75f, 0.75f, 2.25f };
             case 5:
+            case 10:
                 return new float[] { -3f, -1.5f, 0f, 1.5f, 3f };
             case 6:
                 return new float[] { -3f, -1.8f, -0.6f, 0.6f, 1.8f, 3f };
@@ -109,22 +110,54 @@ public class ModelAutoAlignment : EditorWindow
     {
         // 親＆孫以下のオブジェクトを含まない、子配列を作成
         Transform[] children = new Transform[parent.transform.childCount];
+
         int childCount = children.Length;
+        // 子オブジェクトが10個の場合は特殊処理を行う
+        int forSpecial = 10;
         //子の要素数に応じて整列させるx座標を返す
         float[] xPositions = GetXPositions(childCount);
         // z座標は1.25で固定する
         float zPosition = 1.25f;
 
-        for(int i = 0; i < childCount; i++)
+        if(childCount == forSpecial)
         {
-            // 配列に子を格納する
-            children[i] = parent.transform.GetChild(i);
+            GameObject[] tmpChildren = GetChildrenWithoutGrandChildren(parent);
+            // アクティブなオブジェクトを格納する配列の最大要素数
+            int maxActiveChildren = 5;
+            Transform[] activeChildren = new Transform[maxActiveChildren];
+            // アクティブなキャラを格納するときに使用するインデックス
+            int activeIndex = 0;
 
-            // 順番に整列させる
-            Vector3 newPosition = children[i].position;
-            newPosition.x = xPositions[i];
-            newPosition.z = zPosition;
-            children[i].position = newPosition;
+            for(int i = 0; i < childCount; i++)
+            {
+                if(tmpChildren[i].activeSelf)
+                {
+                    // 配列に子を格納する
+                    activeChildren[activeIndex] = tmpChildren[i].transform;
+
+                    // 順番に整列させる
+                    Vector3 newPosition = activeChildren[activeIndex].position;
+                    newPosition.x = xPositions[activeIndex];
+                    newPosition.z = zPosition;
+                    activeChildren[activeIndex].position = newPosition;
+                    // インデックスを加算
+                    activeIndex++;
+                }
+            }
+        }
+        else
+        {
+            for(int i = 0; i < childCount; i++)
+            {
+                // 配列に子を格納する
+                children[i] = parent.transform.GetChild(i);
+
+                // 順番に整列させる
+                Vector3 newPosition = children[i].position;
+                newPosition.x = xPositions[i];
+                newPosition.z = zPosition;
+                children[i].position = newPosition;
+            }
         }
     }
 
@@ -152,6 +185,24 @@ public class ModelAutoAlignment : EditorWindow
 
             effectChildren[i].position = tmpPosition;
         }
+    }
+
+    /// <summary>
+    /// 孫オブジェクトを除いた子オブジェクトを取得する
+    /// </summary>
+    /// <param name="parent"></param>
+    /// <returns></returns>
+    private GameObject[] GetChildrenWithoutGrandChildren(GameObject parent)
+    {
+        // 最後に配列にして返す
+        List<GameObject> result = new List<GameObject>();
+
+        foreach(Transform child in parent.transform)
+        {
+            result.Add(child.gameObject);
+        }
+
+        return result.ToArray();
     }
 }
 
